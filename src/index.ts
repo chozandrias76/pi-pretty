@@ -33,7 +33,8 @@ import type { BundledLanguage, BundledTheme } from "shiki";
 // Config
 // ---------------------------------------------------------------------------
 
-const THEME: BundledTheme = (process.env.PRETTY_THEME as BundledTheme | undefined) ?? "github-dark";
+const THEME: BundledTheme =
+	(process.env.PRETTY_THEME as BundledTheme | undefined) ?? "github-dark";
 
 function envInt(name: string, fallback: number): number {
 	const v = Number.parseInt(process.env[name] ?? "", 10);
@@ -71,7 +72,9 @@ const BG_DEFAULT = "\x1b[49m";
 let BG_BASE = BG_DEFAULT; // tool box base bg — updated from theme's toolSuccessBg
 
 /** Parse an ANSI 24-bit color escape into { r, g, b }. Handles both fg (38;2) and bg (48;2). */
-function parseAnsiRgb(ansi: string): { r: number; g: number; b: number } | null {
+function parseAnsiRgb(
+	ansi: string,
+): { r: number; g: number; b: number } | null {
 	const m = ansi.match(/\x1b\[(?:38|48);2;(\d+);(\d+);(\d+)m/);
 	return m ? { r: +m[1], g: +m[2], b: +m[3] } : null;
 }
@@ -89,7 +92,9 @@ function resolveBaseBackground(theme: any): void {
 			BG_BASE = bgAnsi;
 			RST = `\x1b[0m${BG_BASE}`;
 		}
-	} catch { /* ignore — keep defaults */ }
+	} catch {
+		/* ignore — keep defaults */
+	}
 }
 
 const ESC_RE = "\u001b";
@@ -105,14 +110,17 @@ function isLowContrastShikiFg(params: string): boolean {
 	if (params === "38;5;0" || params === "38;5;8") return true;
 	if (!params.startsWith("38;2;")) return false;
 	const parts = params.split(";").map(Number);
-	if (parts.length !== 5 || parts.some((n) => !Number.isFinite(n))) return false;
+	if (parts.length !== 5 || parts.some((n) => !Number.isFinite(n)))
+		return false;
 	const [, , r, g, b] = parts;
 	const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
 	return luminance < 72;
 }
 
 function normalizeShikiContrast(ansi: string): string {
-	return ansi.replace(ANSI_CAPTURE_RE, (seq, params: string) => (isLowContrastShikiFg(params) ? FG_MUTED : seq));
+	return ansi.replace(ANSI_CAPTURE_RE, (seq, params: string) =>
+		isLowContrastShikiFg(params) ? FG_MUTED : seq,
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -125,7 +133,10 @@ function strip(s: string): string {
 
 function termW(): number {
 	const raw =
-		process.stdout.columns || (process.stderr as any).columns || Number.parseInt(process.env.COLUMNS ?? "", 10) || 200;
+		process.stdout.columns ||
+		(process.stderr as any).columns ||
+		Number.parseInt(process.env.COLUMNS ?? "", 10) ||
+		200;
 	return Math.max(80, Math.min(raw - 4, 210));
 }
 
@@ -236,7 +247,10 @@ function getOuterTerminal(): string {
 	if (process.env.GHOSTTY_RESOURCES_DIR) return "ghostty";
 
 	// Default: assume modern terminal if truecolor is supported
-	if (process.env.COLORTERM === "truecolor" || process.env.COLORTERM === "24bit") {
+	if (
+		process.env.COLORTERM === "truecolor" ||
+		process.env.COLORTERM === "24bit"
+	) {
 		// Can't determine exact terminal, but likely modern
 		return "unknown-modern";
 	}
@@ -269,7 +283,10 @@ function tmuxWrap(seq: string): string {
  * Render base64 image inline using iTerm2 inline image protocol.
  * Protocol: ESC ] 1337 ; File=[args] : base64data BEL
  */
-function renderIterm2Image(base64Data: string, opts: { width?: string; name?: string } = {}): string {
+function renderIterm2Image(
+	base64Data: string,
+	opts: { width?: string; name?: string } = {},
+): string {
 	const args: string[] = ["inline=1", "preserveAspectRatio=1"];
 	if (opts.width) args.push(`width=${opts.width}`);
 	if (opts.name) args.push(`name=${Buffer.from(opts.name).toString("base64")}`);
@@ -285,7 +302,10 @@ function renderIterm2Image(base64Data: string, opts: { width?: string; name?: st
  * Chunked in 4096-byte pieces as required by protocol.
  * Supported by: Kitty, Ghostty
  */
-function renderKittyImage(base64Data: string, opts: { cols?: number } = {}): string {
+function renderKittyImage(
+	base64Data: string,
+	opts: { cols?: number } = {},
+): string {
 	const chunks: string[] = [];
 	const CHUNK_SIZE = 4096;
 
@@ -297,7 +317,9 @@ function renderKittyImage(base64Data: string, opts: { cols?: number } = {}): str
 
 		if (isFirst) {
 			const colPart = opts.cols ? `,c=${opts.cols}` : "";
-			chunks.push(tmuxWrap(`\x1b_Ga=T,f=100,t=d,m=${more}${colPart};${chunk}\x1b\\`));
+			chunks.push(
+				tmuxWrap(`\x1b_Ga=T,f=100,t=d,m=${more}${colPart};${chunk}\x1b\\`),
+			);
 		} else {
 			chunks.push(tmuxWrap(`\x1b_Gm=${more};${chunk}\x1b\\`));
 		}
@@ -434,9 +456,6 @@ function dirIcon(): string {
 // Shiki ANSI cache
 // ---------------------------------------------------------------------------
 
-// Pre-warm
-codeToANSI("", "typescript", THEME).catch(() => {});
-
 const _cache = new Map<string, string[]>();
 
 function _touch(k: string, v: string[]): string[] {
@@ -450,7 +469,10 @@ function _touch(k: string, v: string[]): string[] {
 	return v;
 }
 
-async function hlBlock(code: string, language: BundledLanguage | undefined): Promise<string[]> {
+async function hlBlock(
+	code: string,
+	language: BundledLanguage | undefined,
+): Promise<string[]> {
 	if (!code) return [""];
 	if (!language || code.length > MAX_HL_CHARS) return code.split("\n");
 
@@ -459,7 +481,9 @@ async function hlBlock(code: string, language: BundledLanguage | undefined): Pro
 	if (hit) return _touch(k, hit);
 
 	try {
-		const ansi = normalizeShikiContrast(await codeToANSI(code, language, THEME));
+		const ansi = normalizeShikiContrast(
+			await codeToANSI(code, language, THEME),
+		);
 		const out = (ansi.endsWith("\n") ? ansi.slice(0, -1) : ansi).split("\n");
 		return _touch(k, out);
 	} catch {
@@ -521,17 +545,25 @@ async function renderFileContent(
 
 	out.push(rule(tw));
 	if (total > maxLines) {
-		out.push(`${FG_DIM}  … ${total - maxLines} more lines (${total} total)${RST}`);
+		out.push(
+			`${FG_DIM}  … ${total - maxLines} more lines (${total} total)${RST}`,
+		);
 	}
 	return out.join("\n");
 }
 
 /** Render bash output with colored exit code and stderr highlighting. */
-function renderBashOutput(text: string, exitCode: number | null): { summary: string; body: string } {
+function renderBashOutput(
+	text: string,
+	exitCode: number | null,
+): { summary: string; body: string } {
 	const isOk = exitCode === 0;
 	const statusFg = isOk ? FG_GREEN : FG_RED;
 	const statusIcon = isOk ? "✓" : "✗";
-	const codeStr = exitCode !== null ? `${statusFg}${statusIcon} exit ${exitCode}${RST}` : `${FG_YELLOW}⚡ killed${RST}`;
+	const codeStr =
+		exitCode !== null
+			? `${statusFg}${statusIcon} exit ${exitCode}${RST}`
+			: `${FG_YELLOW}⚡ killed${RST}`;
 
 	const lines = text.split("\n");
 	const maxShow = MAX_PREVIEW_LINES;
@@ -572,7 +604,9 @@ function renderTree(text: string, basePath: string): string {
 	}
 
 	if (total > MAX_PREVIEW_LINES) {
-		out.push(`${FG_RULE}└── ${RST}${FG_DIM}… ${total - MAX_PREVIEW_LINES} more entries${RST}`);
+		out.push(
+			`${FG_RULE}└── ${RST}${FG_DIM}… ${total - MAX_PREVIEW_LINES} more entries${RST}`,
+		);
 	}
 
 	return out.join("\n");
@@ -616,9 +650,13 @@ function renderFindResults(text: string): string {
 }
 
 /** Render grep results with highlighted matches and line numbers. */
-async function renderGrepResults(text: string, pattern: string): Promise<string> {
+async function renderGrepResults(
+	text: string,
+	pattern: string,
+): Promise<string> {
 	const lines = text.split("\n");
-	if (!lines.length || (lines.length === 1 && !lines[0].trim())) return `${FG_DIM}(no matches)${RST}`;
+	if (!lines.length || (lines.length === 1 && !lines[0].trim()))
+		return `${FG_DIM}(no matches)${RST}`;
 
 	const tw = termW();
 	const out: string[] = [];
@@ -655,7 +693,9 @@ async function renderGrepResults(text: string, pattern: string): Promise<string>
 			if (re) {
 				display = content.replace(re, `${RST}${FG_YELLOW}${BOLD}$1${RST}`);
 			}
-			out.push(`  ${lnum(Number(lineNo), nw)} ${FG_RULE}│${RST} ${display}${RST}`);
+			out.push(
+				`  ${lnum(Number(lineNo), nw)} ${FG_RULE}│${RST} ${display}${RST}`,
+			);
 			count++;
 		} else if (line.trim() === "--") {
 			// ripgrep separator
@@ -750,9 +790,15 @@ export default function piPrettyExtension(pi: any): void {
 			resolveBaseBackground(theme);
 			const fp = args?.path ?? "";
 			const text = ctx.lastComponent ?? new TextComponent("", 0, 0);
-			const offset = args?.offset ? ` ${theme.fg("muted", `from line ${args.offset}`)}` : "";
-			const limit = args?.limit ? ` ${theme.fg("muted", `(${args.limit} lines)`)}` : "";
-			text.setText(`${theme.fg("toolTitle", theme.bold("read"))} ${theme.fg("accent", sp(fp))}${offset}${limit}`);
+			const offset = args?.offset
+				? ` ${theme.fg("muted", `from line ${args.offset}`)}`
+				: "";
+			const limit = args?.limit
+				? ` ${theme.fg("muted", `(${args.limit} lines)`)}`
+				: "";
+			text.setText(
+				`${theme.fg("toolTitle", theme.bold("read"))} ${theme.fg("accent", sp(fp))}${offset}${limit}`,
+			);
 			return text;
 		},
 
@@ -781,7 +827,9 @@ export default function piPrettyExtension(pi: any): void {
 				const sizeStr = humanSize(byteSize);
 				const mimeStr = d.mimeType ?? "image";
 
-				out.push(`  ${fileIcon(d.filePath)}${FG_DIM}${mimeStr} · ${sizeStr}${RST}`);
+				out.push(
+					`  ${fileIcon(d.filePath)}${FG_DIM}${mimeStr} · ${sizeStr}${RST}`,
+				);
 				out.push(rule(tw));
 
 				const protocol = detectImageProtocol();
@@ -797,7 +845,9 @@ export default function piPrettyExtension(pi: any): void {
 						}),
 					);
 				} else {
-					out.push(`  ${FG_DIM}(Inline image preview requires Ghostty, iTerm2, WezTerm, or Kitty)${RST}`);
+					out.push(
+						`  ${FG_DIM}(Inline image preview requires Ghostty, iTerm2, WezTerm, or Kitty)${RST}`,
+					);
 				}
 
 				out.push(rule(tw));
@@ -854,10 +904,15 @@ export default function piPrettyExtension(pi: any): void {
 				// Try to extract exit code from the output
 				let exitCode: number | null = 0;
 				if (textContent) {
-					const exitMatch = textContent.match(/(?:exit code|exited with|exit status)[:\s]*(\d+)/i);
+					const exitMatch = textContent.match(
+						/(?:exit code|exited with|exit status)[:\s]*(\d+)/i,
+					);
 					if (exitMatch) exitCode = Number(exitMatch[1]);
 					// Check for common error indicators
-					if (textContent.includes("command not found") || textContent.includes("No such file")) {
+					if (
+						textContent.includes("command not found") ||
+						textContent.includes("No such file")
+					) {
 						exitCode = 1;
 					}
 				}
@@ -873,10 +928,12 @@ export default function piPrettyExtension(pi: any): void {
 			},
 
 			renderCall(args: any, theme: any, ctx: any) {
-			resolveBaseBackground(theme);
+				resolveBaseBackground(theme);
 				const cmd = args?.command ?? "";
 				const text = ctx.lastComponent ?? new TextComponent("", 0, 0);
-				const timeout = args?.timeout ? ` ${theme.fg("muted", `(${args.timeout}s timeout)`)}` : "";
+				const timeout = args?.timeout
+					? ` ${theme.fg("muted", `(${args.timeout}s timeout)`)}`
+					: "";
 				text.setText(
 					`${theme.fg("toolTitle", theme.bold("bash"))} ${theme.fg("accent", cmd.length > 80 ? cmd.slice(0, 77) + "…" : cmd)}${timeout}`,
 				);
@@ -884,7 +941,7 @@ export default function piPrettyExtension(pi: any): void {
 			},
 
 			renderResult(result: any, _opt: any, theme: any, ctx: any) {
-			resolveBaseBackground(theme);
+				resolveBaseBackground(theme);
 				const text = ctx.lastComponent ?? new TextComponent("", 0, 0);
 
 				if (ctx.isError) {
@@ -902,7 +959,8 @@ export default function piPrettyExtension(pi: any): void {
 					const { summary, body } = renderBashOutput(d.text, d.exitCode);
 					const lines = d.text.split("\n");
 					const lineCount = lines.length;
-					const lineInfo = lineCount > 1 ? `  ${FG_DIM}(${lineCount} lines)${RST}` : "";
+					const lineInfo =
+						lineCount > 1 ? `  ${FG_DIM}(${lineCount} lines)${RST}` : "";
 					const header = `  ${summary}${lineInfo}`;
 
 					// Show output content
@@ -952,7 +1010,9 @@ export default function piPrettyExtension(pi: any): void {
 					.join("\n");
 
 				const fp = params.path ?? cwd;
-				const entryCount = textContent ? textContent.trim().split("\n").filter(Boolean).length : 0;
+				const entryCount = textContent
+					? textContent.trim().split("\n").filter(Boolean).length
+					: 0;
 
 				(result as any).details = {
 					_type: "lsResult",
@@ -965,15 +1025,17 @@ export default function piPrettyExtension(pi: any): void {
 			},
 
 			renderCall(args: any, theme: any, ctx: any) {
-			resolveBaseBackground(theme);
+				resolveBaseBackground(theme);
 				const fp = args?.path ?? ".";
 				const text = ctx.lastComponent ?? new TextComponent("", 0, 0);
-				text.setText(`${theme.fg("toolTitle", theme.bold("ls"))} ${theme.fg("accent", sp(fp))}`);
+				text.setText(
+					`${theme.fg("toolTitle", theme.bold("ls"))} ${theme.fg("accent", sp(fp))}`,
+				);
 				return text;
 			},
 
 			renderResult(result: any, _opt: any, theme: any, ctx: any) {
-			resolveBaseBackground(theme);
+				resolveBaseBackground(theme);
 				const text = ctx.lastComponent ?? new TextComponent("", 0, 0);
 
 				if (ctx.isError) {
@@ -1020,7 +1082,9 @@ export default function piPrettyExtension(pi: any): void {
 					.map((c: any) => c.text || "")
 					.join("\n");
 
-				const matchCount = textContent ? textContent.trim().split("\n").filter(Boolean).length : 0;
+				const matchCount = textContent
+					? textContent.trim().split("\n").filter(Boolean).length
+					: 0;
 
 				(result as any).details = {
 					_type: "findResult",
@@ -1033,16 +1097,20 @@ export default function piPrettyExtension(pi: any): void {
 			},
 
 			renderCall(args: any, theme: any, ctx: any) {
-			resolveBaseBackground(theme);
+				resolveBaseBackground(theme);
 				const pattern = args?.pattern ?? "";
-				const path = args?.path ? ` ${theme.fg("muted", `in ${sp(args.path)}`)}` : "";
+				const path = args?.path
+					? ` ${theme.fg("muted", `in ${sp(args.path)}`)}`
+					: "";
 				const text = ctx.lastComponent ?? new TextComponent("", 0, 0);
-				text.setText(`${theme.fg("toolTitle", theme.bold("find"))} ${theme.fg("accent", pattern)}${path}`);
+				text.setText(
+					`${theme.fg("toolTitle", theme.bold("find"))} ${theme.fg("accent", pattern)}${path}`,
+				);
 				return text;
 			},
 
 			renderResult(result: any, _opt: any, theme: any, ctx: any) {
-			resolveBaseBackground(theme);
+				resolveBaseBackground(theme);
 				const text = ctx.lastComponent ?? new TextComponent("", 0, 0);
 
 				if (ctx.isError) {
@@ -1093,7 +1161,7 @@ export default function piPrettyExtension(pi: any): void {
 					? textContent
 							.trim()
 							.split("\n")
-							.filter((l: string) => l.match(/^.+?[:\-]\d+[:\-]/)).length
+							.filter((l: string) => l.match(/^.+?[:-]\d+[:-]/)).length
 					: 0;
 
 				(result as any).details = {
@@ -1107,17 +1175,23 @@ export default function piPrettyExtension(pi: any): void {
 			},
 
 			renderCall(args: any, theme: any, ctx: any) {
-			resolveBaseBackground(theme);
+				resolveBaseBackground(theme);
 				const pattern = args?.pattern ?? "";
-				const path = args?.path ? ` ${theme.fg("muted", `in ${sp(args.path)}`)}` : "";
-				const glob = args?.glob ? ` ${theme.fg("muted", `(${args.glob})`)}` : "";
+				const path = args?.path
+					? ` ${theme.fg("muted", `in ${sp(args.path)}`)}`
+					: "";
+				const glob = args?.glob
+					? ` ${theme.fg("muted", `(${args.glob})`)}`
+					: "";
 				const text = ctx.lastComponent ?? new TextComponent("", 0, 0);
-				text.setText(`${theme.fg("toolTitle", theme.bold("grep"))} ${theme.fg("accent", pattern)}${path}${glob}`);
+				text.setText(
+					`${theme.fg("toolTitle", theme.bold("grep"))} ${theme.fg("accent", pattern)}${path}${glob}`,
+				);
 				return text;
 			},
 
 			renderResult(result: any, _opt: any, theme: any, ctx: any) {
-			resolveBaseBackground(theme);
+				resolveBaseBackground(theme);
 				const text = ctx.lastComponent ?? new TextComponent("", 0, 0);
 
 				if (ctx.isError) {
@@ -1146,7 +1220,9 @@ export default function piPrettyExtension(pi: any): void {
 							})
 							.catch(() => {});
 					}
-					text.setText(ctx.state._gt ?? `  ${FG_DIM}${d.matchCount} matches${RST}`);
+					text.setText(
+						ctx.state._gt ?? `  ${FG_DIM}${d.matchCount} matches${RST}`,
+					);
 					return text;
 				}
 
